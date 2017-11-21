@@ -35,10 +35,16 @@ class AccessoryToolbar: UIToolbar {
         self.textInput = forTextInput;
         self.barStyle = barStyle;
         let buttonColor = (barStyle == .default) ? UIColor.darkGray : UIColor.white
-        let clearButtonItem = UIBarButtonItem(barButtonSystemItem: .trash,
-                                              target: self,
-                                              action: #selector(clearTextFeild))
-        clearButtonItem.tintColor = buttonColor
+        
+        let unindent = createStringBarButtonItem(strings: [" ←← "],
+                                               color:  buttonColor,
+                                               action: #selector(unindentText),
+                                               height: 26)
+        let indent = createStringBarButtonItem(strings: [" →→ "],
+                                               color:  buttonColor,
+                                               action: #selector(indentText),
+                                               height: 26)
+        
         let spaceButtonItem = UIBarButtonItem(barButtonSystemItem: .flexibleSpace,
                                               target: self,
                                               action: nil)
@@ -48,7 +54,7 @@ class AccessoryToolbar: UIToolbar {
         doneButtonItem.width = 150;
         doneButtonItem.tintColor = buttonColor
         
-        let items = [clearButtonItem,
+        let items = [unindent, indent,
                      spaceButtonItem,
                      createStringBarButtonItem(strings: strings,
                                                color:  buttonColor,
@@ -141,4 +147,57 @@ class AccessoryToolbar: UIToolbar {
         }
     }
     
+    func indentText() {
+        if textInput.isKind(of: UITextView.self) {
+            let textView = textInput as! UITextView
+            
+            if let range = textView.selectedTextRange {
+                let lineStartIndexes = lineStarts(text: textView.text)
+                
+                let cursorLocation = textView.offset(from: textView.beginningOfDocument, to: range.start)
+                
+                // Find the start of the line of the selected text (even if it's not selected)
+                var location = 0
+                for n in 0..<lineStartIndexes.count {
+                    // if there is no next line
+                    // or
+                    // if the cursor is less than next line
+                    if n + 1 > lineStartIndexes.count - 1 || cursorLocation < lineStartIndexes[n + 1] {
+                        location = lineStartIndexes[n] // it must be this line
+                        break
+                    }
+                }
+                
+                let length = textView.offset(from: range.start, to: range.end)
+                let lengthPlusDiff = length + (cursorLocation - location)
+                let nsRange = NSRange(location: location, length: lengthPlusDiff)
+                
+                textView.text = textView.text.replacingOccurrences(of: "\n", with: "\n  ", options: [], range: Range(nsRange, in: textView.text))
+                
+//                let selectionStart = textView.position(from: textView.beginningOfDocument, offset: location + 1)
+//                let selectionEnd = textView.position(from: textView.beginningOfDocument, offset: lengthPlusDiff)
+//                textView.selectedTextRange = textView.textRange(from: selectionStart!, to: selectionEnd!)
+                
+                // TODO: record which lines were selected, and select those
+//                textView.selectedTextRange = range
+            }
+        }
+    }
+    
+    func unindentText() {
+        
+    }
+    
+    func lineStarts(text: String) -> [Int] {
+        var lineStarts: [Int] = [0]
+        
+        var count = 0
+        let regex = try! NSRegularExpression(pattern: "\n", options: [])
+        regex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: text.count)) { result, _, stop in
+            count += 1
+            lineStarts.append(result!.range.location)
+        }
+        
+        return lineStarts
+    }
 }
