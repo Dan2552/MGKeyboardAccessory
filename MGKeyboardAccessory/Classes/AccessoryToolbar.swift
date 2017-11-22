@@ -36,11 +36,11 @@ class AccessoryToolbar: UIToolbar {
         self.barStyle = barStyle;
         let buttonColor = (barStyle == .default) ? UIColor.darkGray : UIColor.white
         
-        let unindent = createStringBarButtonItem(strings: [" ←← "],
+        let unindent = createStringBarButtonItem(strings: ["←"],
                                                color:  buttonColor,
                                                action: #selector(unindentText),
                                                height: 26)
-        let indent = createStringBarButtonItem(strings: [" →→ "],
+        let indent = createStringBarButtonItem(strings: ["→"],
                                                color:  buttonColor,
                                                action: #selector(indentText),
                                                height: 26)
