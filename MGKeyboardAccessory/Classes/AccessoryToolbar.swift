@@ -147,14 +147,15 @@ class AccessoryToolbar: UIToolbar {
         }
     }
     
-    func indentText() {
+    func dentText(replace: String, with: String) {
         if textInput.isKind(of: UITextView.self) {
             let textView = textInput as! UITextView
             
             if let range = textView.selectedTextRange {
-                let lineStartIndexes = lineStarts(text: textView.text)
+                var lineStartIndexes = lineStarts(text: textView.text)
                 
                 let cursorLocation = textView.offset(from: textView.beginningOfDocument, to: range.start)
+                let cursorLocationEnd = textView.offset(from: textView.beginningOfDocument, to: range.end)
                 
                 // Find the start of the line of the selected text (even if it's not selected)
                 var location = 0
@@ -162,30 +163,61 @@ class AccessoryToolbar: UIToolbar {
                     // if there is no next line
                     // or
                     // if the cursor is less than next line
-                    if n + 1 > lineStartIndexes.count - 1 || cursorLocation < lineStartIndexes[n + 1] {
-                        location = lineStartIndexes[n] // it must be this line
+                    if n + 1 > lineStartIndexes.count - 1 || cursorLocation <= lineStartIndexes[n + 1] {
+                        location = lineStartIndexes[n] + 1 // it must be this line
+                        if location == 1 { location = 0 }
                         break
                     }
                 }
                 
+                
+                var lineForEnd = 0
+                for n in 0..<lineStartIndexes.count {
+                    // if there is no next line
+                    if n + 1 > lineStartIndexes.count - 1 {
+                        lineForEnd = n
+                        break
+                    }
+                    
+                    // if the cursor is between current line and the next
+                    if cursorLocationEnd >= lineStartIndexes[n] && cursorLocationEnd <= lineStartIndexes[n + 1] {
+                        lineForEnd = n
+                        break
+                    }
+                }
+
                 let length = textView.offset(from: range.start, to: range.end)
                 let lengthPlusDiff = length + (cursorLocation - location)
                 let nsRange = NSRange(location: location, length: lengthPlusDiff)
                 
-                textView.text = textView.text.replacingOccurrences(of: "\n", with: "\n  ", options: [], range: Range(nsRange, in: textView.text))
+
+                let regex = try! NSRegularExpression(pattern: replace, options: .anchorsMatchLines)
+                textView.text = regex.stringByReplacingMatches(in: textView.text, options: .withTransparentBounds, range: nsRange, withTemplate: with)
+
+                lineStartIndexes = lineStarts(text: textView.text)
                 
-//                let selectionStart = textView.position(from: textView.beginningOfDocument, offset: location + 1)
-//                let selectionEnd = textView.position(from: textView.beginningOfDocument, offset: lengthPlusDiff)
-//                textView.selectedTextRange = textView.textRange(from: selectionStart!, to: selectionEnd!)
-                
-                // TODO: record which lines were selected, and select those
-//                textView.selectedTextRange = range
+                // Find the end of the last ilne of the selected text (even if it's not selected; to select)
+                let fullEnd: Int
+                if lineForEnd + 1 > lineStartIndexes.count - 1 {
+                    fullEnd = textView.text.count
+                } else {
+                    fullEnd = lineStartIndexes[lineForEnd + 1]
+                }
+
+                let rangeStart = textInput.position(from: textInput.beginningOfDocument, offset: location)!
+                let rangeEnd = textInput.position(from: rangeStart, offset: fullEnd - location)!
+
+                textView.selectedTextRange = textView.textRange(from: rangeStart, to: rangeEnd)
             }
         }
     }
     
+    func indentText() {
+        dentText(replace: "^", with: "  ")
+    }
+    
     func unindentText() {
-        
+        dentText(replace: "^  ", with: "")
     }
     
     func lineStarts(text: String) -> [Int] {
